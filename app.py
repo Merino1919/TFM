@@ -1,6 +1,8 @@
 import streamlit as st
 from RAG.utils.embeddings import EmbeddingManager
 from RAG.src.query_db import query_database
+from RAG.utils.nice_results import display_results
+from RAG.utils.temp_file import write_temp_file
 import os
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
@@ -20,69 +22,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         
-# --- FUNCIONES ADICIONALES ---
-def display_results(ordered_results):
-    """
-    Muestra los resultados de la consulta, accediendo a cada componente de la tupla 
-    (distancia, metadatos, ruta) de forma separada.
-    """
-    if not ordered_results:
-        st.info("No se encontraron resultados para la consulta.")
-        return
-
-    st.subheader("📊 Resultados de la Consulta")
-    st.markdown("---")
-
-    for i, result_tuple in enumerate(ordered_results):
         
-        # 1. ACCESO SEPARADO A LOS ELEMENTOS DE LA TUPLA
-        # Desempaquetamos la tupla en variables claras:
-        distancia = result_tuple[0]  # Primer elemento: Distancia (float)
-        metadata = result_tuple[1]   # Segundo elemento: Diccionario de metadatos (dict)
-        media_path = result_tuple[2] # Tercer elemento: Ruta de Archivo/URL (str)
-        
-        # 2. EXTRACCIÓN DETALLADA DE METADATOS
-        especie = metadata.get("common_name", "Desconocida")
-        modalidad = metadata.get("type", "N/A")
-
-        # Creamos dos columnas por resultado para la visualización
-        col1, col2 = st.columns([1, 1])
-
-        # --- Columna 1: Datos Extraídos y Documento ---
-        with col1:
-            st.markdown(f"**Resultado {i+1}**")
-            
-            # Mostramos cada valor extraído individualmente
-            st.markdown(f"**Distancia (Similitud):** `{distancia:.4f}`")
-            st.markdown(f"**Especie:** `{especie}`")
-            st.markdown(f"**Modalidad:** `{modalidad}`")
-            
-            # La ruta de archivo/URL como un elemento separado
-            with st.expander(f"🔗 URL / Ruta Completa"):
-                st.code(media_path)
-
-        # --- Columna 2: Carga y Visualización de Media ---
-        with col2:
-            if media_path and isinstance(media_path, str):
-                try:
-                    # Determinamos la extensión para saber cómo cargarlo
-                    ext = os.path.splitext(media_path)[1].lower()
-                    
-                    if ext in ('.jpg', '.jpeg', '.png'):
-                        st.image(media_path, caption=especie, use_container_width="always")
-                    elif ext in ('.mp3', '.wav', '.ogg'):
-                        st.audio(media_path, format=f'audio/{ext.strip(".")}')
-                    else:
-                        st.warning(f"Tipo de media no soportado: {ext}")
-                
-                except Exception as e:
-                    # Error si la ruta es inaccesible o si Streamlit no puede cargar el archivo
-                    st.error(f"Error al cargar media: {e}. Ruta: `{media_path}`")
-            else:
-                st.info("Ruta de media no disponible o inválida.")
-        
-        st.markdown("---") # Separador para cada resultado
-
 # --- PÁGINA 1: INICIO ---
 if page == "Inicio":
     st.title("🐦 Ornito-RAG: Inteligencia Artificial Multimodal")
@@ -128,18 +68,30 @@ elif page == "📸 Búsqueda por imagen":
     if st.button("Analizar Imagen"):
         with st.spinner("Consultando base de datos y buscando coincidencias..."):
             
-            # Pasamos el archivo por el EmbeddingManager: 
-            manager = EmbeddingManager()
-            embedding_img = manager.get_image_embedding(uploaded_img)
+            # Creamos archivo temporal
+            temp_path = write_temp_file(uploaded_img)
             
-            # Hacemos consulta a la BDD de ChromaDB
-            result_img = query_database(embedding_img)
+            try:
+                # Pasamos el archivo por el EmbeddingManager: 
+                manager = EmbeddingManager()
+                embedding_img = manager.get_image_embedding(temp_path)
+                
+                # Hacemos consulta a la BDD de ChromaDB
+                result_img = query_database(embedding_img)
+                
+                # Mostramos el resultado obtenido
+                display_results(result_img)
             
-            # Mostramos el resultado obtenido
-            display_results(result_img)
+            except Exception as e:
+                st.error(f"Error al procesar la imagen: {e}")
             
+            finally:
+                # Borramos el archivo temporal 
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+ 
     else:
-        st.warning("Formato no reconocido")
+        st.warning("Por favor, sube una imagen primero.")
     
         
 # --- PÁGINA 3: IDENTIFICADOR POR CANTO ---
@@ -156,19 +108,32 @@ elif page == "🎵 Búsqueda por audio":
     if st.button("Analizar Audio"):
         with st.spinner("Analizando espectrograma y buscando coincidencias..."):
             
-            # Pasamos el archivo por el EmbeddingManager: 
-            manager = EmbeddingManager()
-            embedding_aud = manager.get_image_embedding(uploaded_audio)
+            # Creamos archivo temporal
+            temp_path = write_temp_file(uploaded_audio)
             
-            # Hacemos consulta a la BDD de ChromaDB
-            result_aud = query_database(embedding_aud)
-            
-            # Mostramos el resultado obtenido
-            display_results(result_aud)
-            
-            
+            try:
+                # Pasamos el archivo por el EmbeddingManager: 
+                manager = EmbeddingManager()
+                label, embedding_aud, scientific_name = manager.get_audio_embedding(temp_path)
+                
+                if embedding_aud:
+                    # Hacemos consulta a la BDD de ChromaDB
+                    result_aud = query_database(embedding_aud)
+                    
+                    # Mostramos el resultado obtenido
+                    display_results(result_aud)
+                else:
+                    st.error("BirdNet no pudo identificar ninguna especie en este audio.")
+                
+            except Exception as e: 
+                st.error(f"Error al procesar el audio: {e}")
+                
+            finally: 
+                # Borramos archivo temporal
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)      
     else:
-        st.warning("Formato no reconocido")
+        st.warning("Por favor, sube un archivo de audio primero.")
 
 
 
