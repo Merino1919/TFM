@@ -23,9 +23,26 @@ def display_results(ordered_results):
         media_path = result_tuple[2] # Tercer elemento: Ruta de Archivo/URL (str)
         
         # 2. EXTRACCIÓN DETALLADA DE METADATOS
-        especie = metadata.get("bird_common_name", "Desconocida")
-        modalidad = metadata.get("type", "N/A")
-
+        if media_path: 
+            try: 
+                
+                # Conseguimos la extension de media_path
+                ext = os.path.splitext(media_path)[1].lower()
+                
+                # Filtro por extensión -> IMAGENES
+                if ext in ('.jpg', '.jpeg', '.png'):
+                    especie = metadata.get("common_name", "Desconocida")
+                    modalidad = metadata.get("type", "N/A")
+                
+                # Filtro por extensión -> AUDIOS
+                if ext in ('.mp3', '.wav', '.ogg'): 
+                    especie = metadata.get("bird_common_name", "Desconocida")
+                    modalidad = metadata.get("type", "N/A")      
+                
+            
+            except Exception as e: 
+                st.error(f"Error al cargar media: {e}. Ruta: `{media_path}`")
+                
         # Creamos dos columnas por resultado para la visualización
         col1, col2 = st.columns([1, 1])
 
