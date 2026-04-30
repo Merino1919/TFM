@@ -1,50 +1,53 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+import os
 from typing import List
 from dotenv import load_dotenv
-import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
 
 load_dotenv()
 
 def create_ai_enhanced_summary(text: str, tables: List[str], images: List[str]) -> str: 
-    """Create AI-enhanced summary for mixed content"""
+    """
+    Crea una descripción técnica y ultra-especializada para mejorar la recuperación
+    de contenido multimodal en el dominio de la ornitología.
+    """
     try: 
-        
-        # Cargar el LLM y la api key
-        LLM = os.getenv("LLM")
+        # Carga de configuración
+        # Se asume que en el .env LLM=gemini-1.5-flash o gemini-2.5-flash-lite
+        model_name = os.getenv("LLM")
         api_key = os.getenv("GOOGLE_API_KEY")
         
-        # Initialize the LLM with Google
-        llm = ChatGoogleGenerativeAI(model=LLM, api_key = api_key)
+        llm = ChatGoogleGenerativeAI(model=model_name, api_key=api_key, temperature=0.2)
         
-        # Build the text prompt
-        prompt_text = f"""You are creating a searchable description for document content retrieval. 
+        # PROMPT ESPECIALIZADO
+        prompt_instructions = """Actúa como un Ornitólogo Senior y Analista de Datos Biológicos. 
+Tu objetivo es transformar este fragmento de un paper científico en una descripción técnica densa en metadatos y conceptos clave para que un sistema de búsqueda (RAG) pueda encontrarlo con precisión.
+
+INSTRUCCIONES DE ANÁLISIS:
+1. TAXONOMÍA: Identifica y escribe explícitamente nombres científicos (Género especie) y comunes de las aves mencionadas.
+2. DATOS CUANTITATIVOS: Si hay tablas, extrae valores críticos (n, p-values, medias, desviaciones, coordenadas geográficas).
+3. ANÁLISIS VISUAL: Si hay gráficos, identifica el tipo (dispersión, espectrograma, mapa de calor), los ejes (X e Y) y la tendencia biológica que muestran.
+4. CONTEXTO ECOLÓGICO: Describe el hábitat, la fenología (época del año) y el comportamiento descrito.
+
+ESTRUCTURA DE LA SALIDA (Obligatoria):
+- RESUMEN TÉCNICO: (Breve explicación del hallazgo principal).
+- DATOS Y TABLAS: (Desglose numérico de las tablas proporcionadas).
+- INTERPRETACIÓN VISUAL: (Descripción de patrones en las imágenes/figuras).
+- PALABRAS CLAVE DE BÚSQUEDA: (Lista de términos técnicos, especies y lugares).
+
+CONTENIDO A PROCESAR:
+"""
         
-        CONTENT TO ANALYZE: 
-        TEXT CONTENT: 
-        {text}
-        """
+        content_to_analyze = f"{prompt_instructions}\n\nTEXTO DEL DOCUMENTO:\n{text}\n"
         
         if tables: 
-            prompt_text += "TABLES:\n"
+            content_to_analyze += "\nTABLAS (HTML/Texto):\n"
             for i, table in enumerate(tables): 
-                prompt_text += f"Table {i+1}:\n{table}\n\n"
+                content_to_analyze += f"--- Tabla {i+1} ---\n{table}\n"
                 
-                prompt_text += """
-                YOUR TASK: 
-                Generate a comprehensive, searchable description that covers: 
-
-                1. Key facts, numbers, and data points from text and tables
-                2. Main topics and concepts discussed
-                3. Questions this content could answer 
-                4. Visual content analysis (charts, diagrams, patterns in images). If the content is a table, describe each row and column. If the content is an image, describe the colors you see, structure and patterns. 
+        message_content = [{"type": "text", "text": content_to_analyze}]
         
-                Make it detailed and searchable - prioritize findability over brevity
-                
-                SEARCHABLE DESCRIPTION:"""
-                
-        message_content = [{"type": "text", "text": prompt_text}]
-        
+        # Inclusión de imágenes en base64 para el modelo multimodal
         for image_base64 in images: 
             message_content.append({
                 "type": "image_url",
@@ -57,11 +60,9 @@ def create_ai_enhanced_summary(text: str, tables: List[str], images: List[str]) 
         return response.content
     
     except Exception as e: 
-        print(f"""Error generating description: {e}""")
-        
-        summary = f"{text[:300]}..."
-        if tables: 
-            summary += f" [Contains {len(tables)} table(s)]"
-        if images: 
-            summary += f" [Contains {len(images)} images(s)]"
+        print(f"Error generando descripción experta: {e}")
+        # Fallback básico en caso de error de API
+        summary = f"Fragmento técnico: {text[:200]}..."
+        if tables: summary += f" | Tablas: {len(tables)}"
+        if images: summary += f" | Imágenes: {len(images)}"
         return summary

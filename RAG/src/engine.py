@@ -19,13 +19,13 @@ class RAGEngine:
         self.api_key = os.getenv("GOOGLE_API_KEY")
         self.embedding_model_name = os.getenv("EMBEDDING_MODEL")
         self.text_embedder = GoogleGenerativeAIEmbeddings(model=self.embedding_model_name, api_key=self.api_key)
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=self.api_key)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=self.api_key)
         self.vector_store = self.create_vector_store()
 
     def create_vector_store(self):
         
-        CHROMA_PATH = "C:/Users/34656/OneDrive/Escritorio/Research/TFM/RAG/data/docs"
-        COLLECTION_NAME = "docs_ornitologia"
+        CHROMA_PATH = os.getenv("CHROMA_PATH")
+        COLLECTION_NAME = os.getenv("COLLECTION_NAME")
                 
         if not os.path.exists(CHROMA_PATH):
             os.makedirs(CHROMA_PATH)
@@ -34,28 +34,40 @@ class RAGEngine:
             embedding_function=self.text_embedder,
             collection_name=COLLECTION_NAME
         )
+    
+        
+    # def _generate_document_context(self, elements):
+    #   """Genera un contexto global breve del documento para situar cada chunk."""
+    #   Tomamos los primeros 10 elementos (título, abstract, intro) para dar contexto
+    #   intro_text = " ".join([e.text for e in elements[:10]])
+    #   prompt = f"Resume en máximo 2 frases de qué trata este paper científico y cuál es su objetivo principal: {intro_text}"
+    #   try:
+    #       response = self.llm.invoke(prompt)
+    #       return response.content
+    #   except:
+    #       return "Documento especializado en ornitología.
 
     def summarise_chunks(self, chunks): 
-        """Process all chunks with AI Summaries"""
-        print("Processing chunks with AI Summaries... ")
+        """Procesa todos los chunks con resúmenes IA"""
+        print("Procesando chunks con resúmenes IA... ")
     
         langchain_documents = []
         total_chunks = len(chunks)
     
         for i, chunk in enumerate(chunks):
             current_chunk = i + 1
-            print(f" Processing chunk {current_chunk} / {total_chunks}")
+            print(f" Procesando chunk {current_chunk} / {total_chunks}")
             
             # Analyze chunk content
             content_data = separate_content_types(chunk)
             
             # Debug prints
-            print(f"    Types found: {content_data['types']}")
-            print(f"    Tables: {len(content_data['tables'])}, Images: {len(content_data['images'])}")
+            print(f"    Tipos encontrados: {content_data['types']}")
+            print(f"    Tablas: {len(content_data['tables'])}, Imágenes: {len(content_data['images'])}")
             
             # Create AI-Enhanced summary if chunk has tables/images
             if content_data['tables'] or content_data['images']: 
-                print(f" Creating AI Summary for mixed content...")
+                print(f" Creando resumen con IA para contenido mixto...")
                 
                 try: 
                     enhanced_content = create_ai_enhanced_summary(
@@ -64,30 +76,38 @@ class RAGEngine:
                         content_data['images']
                     )    
                     
-                    print(f"    AI summary created successfully")
-                    print(f"    Enhanced content preview {enhanced_content[:200]}")
+                    print(f"    Resumen IA creado exitosamente")
+                    print(f"    Contenido mejorado: {enhanced_content[:200]}")
                 
                 except Exception as e: 
-                    print(f"     AI summary failed: {e}")
+                    print(f"     Resumen IA falló: {e}")
                     enhanced_content = content_data['text']
             
             else: 
-                print(f"    Using raw text (no images or tables)")
+                print(f"    Usando texto crudo (sin imágenes o tablas)")
                 enhanced_content = content_data['text']
                     
-            doc = Document(
-                page_content=enhanced_content, 
-                metadata={
-                    "original_content": json.dumps({
-                        "raw_text": content_data['text'],
-                        "tables_html": content_data['tables'],
-                        "images_base64": content_data['images']  
-                    })
-                }
-            )
+            # Forzamos la conversión a string por si viene algún otro tipo de objeto
+            enhanced_content = str(enhanced_content).strip()
+            # -----------------------------------------------
+
+            if enhanced_content: 
+                
+                doc = Document(
+                    page_content=enhanced_content, 
+                    metadata={
+                        "original_content": json.dumps({
+                            "raw_text": content_data['text'],
+                            "tables_html": content_data['tables'],
+                            "images_base64": content_data['images']  
+                        })
+                    }
+                )
+                langchain_documents.append(doc)
             
+            else: 
+                print(f"    [Skipped] El chunk {current_chunk} está vacío tras el procesado.")
             
-            langchain_documents.append(doc)
             
         print(f"Processed {len(langchain_documents)} chunks")
         return langchain_documents
@@ -100,12 +120,12 @@ class RAGEngine:
                 status_callback(msg)
         
         # Step 1: Partition
-        update_status("🔍 Parsing file structure (Unstructured)...")
+        update_status("🔍 Parseando estructura del archivo...")
         elements = select_loader(file_path)
         
         # Step 2: Chunking
-        update_status("✂️ Splitting content into chunks...")
-        chunks = chunk_by_title(elements, max_characters=350, new_after_n_chars=200, combine_text_under_n_chars=50)
+        update_status("✂️ Dividiendo el contenido en chunks...")
+        chunks = chunk_by_title(elements, max_characters=3000, new_after_n_chars=2400, combine_text_under_n_chars=500)
         
         all_categories = []
         for chunk in chunks:
@@ -115,13 +135,24 @@ class RAGEngine:
                     all_categories.append(el.to_dict().get("type"))
         
         # Step 3: AI Summarisation
-        update_status("🤖 Generating AI Summaries for tables and images...")
+        update_status("🤖 Generando resúmenes IA para tablas e imágenes...")
         summarised_chunks = self.summarise_chunks(chunks)
         
         # Step 4: Ingest documents into vector database
-        update_status("💾 Indexing into Vector Database (ChromaDB)...")
-        if summarised_chunks: 
-            self.vector_store.add_documents(documents = summarised_chunks)
+        update_status("💾 Indexando en la BDD Vectorial (ChromaDB)...")
+        if summarised_chunks:
+            total = len(summarised_chunks)
+            exitosos = 0
+            
+            # Ingestamos documento a documento para aislar cualquier fallo de la API
+            for i, doc in enumerate(summarised_chunks):
+                try:
+                    self.vector_store.add_documents(documents=[doc])
+                    exitosos += 1
+                except Exception as e:
+                    print(f"    ⚠️ [Error] No se pudo crear el embedding para el chunk {i}: {e}")
+            
+            update_status(f"✅ Se han indexado {exitosos} de {total} chunks correctamente.")
         
         return all_categories
     
@@ -133,7 +164,7 @@ class RAGEngine:
         
         if not docs_and_scores:
             return {
-                    "answer": "There's no relevant data provided in the documents",
+                    "answer": "No hay información relevante en los documentos",
                     "best_chunk": "N/A",
                     "chunk_id": "N/A",  
                     "score": 0
@@ -144,7 +175,7 @@ class RAGEngine:
         message_content = []
         
         for i, (doc, score) in enumerate(docs_and_scores):
-            prompt_context += f"--- Document {i + 1} (Score: {round(score, 4)}) ---\n"
+            prompt_context += f"--- Documento {i + 1} (Score: {round(score, 4)}) ---\n"
             
             # Extract the content of the metadata (JSON)
             if "original_content" in doc.metadata:
@@ -180,25 +211,14 @@ class RAGEngine:
             prompt_context += "\n"
 
         # 3. Final prompt building
-        full_prompt_text = f"""You are a confidential document analyst. Use the following context (which includes text, tables, and images) to answer the question.
-        If you don't find the response to the user query, be humble and say that you don't know the answer.
+        full_prompt_text = f"""Actúa como un experto en Ornitología y Análisis de Datos Científicos. Utiliza el siguiente contexto (que incluye texto, tablas e imágenes) para responder a la pregunta.
+        Si no encuentras la respuesta a la consulta del usuario, sé humilde y di que no la sabes.
 
-        ### Mathematical Formatting Guidelines:
-        - ALWAYS use LaTeX for any mathematical expression, formula, or scientific notation.
-        - For inline formulas, wrap between single dollar signs: $...$.
-        - For standalone equations, wrap between double dollar signs: $$.
-        - Ensure there is a line break before and after $$ for better rendering.
-        - Ensure LaTeX syntax is clean: use '^' for exponents, '_' for subscripts, and '\cdot' for multiplication. 
-        - DO NOT use unnecessary punctuation (like '!') inside or immediately after the formulas unless it is a factorial.
-        - STRICTLY use double dollar signs $$...$$ for block equations. 
-        - NEVER use square brackets like \[...\] or \(...\) for math.
-        
-
-        Context:
+        Contexto:
         {prompt_context}
 
-        Question: {query}
-        Answer:"""
+        Pregunta: {query}
+        Respuesta:"""
 
         # 4. Combine text and images using the format desired by the multimodal LLM.
         # Insert the text prompt at the begining of the content list.
@@ -248,8 +268,8 @@ class RAGEngine:
         """Deletes the collection and create it again in a secure way."""
         try:
             
-            COLLECTION_NAME = "docs_ornitologia"
-            CHROMA_PATH = "C:/Users/34656/OneDrive/Escritorio/Research/TFM/RAG/data/docs"
+            CHROMA_PATH = os.getenv("CHROMA_PATH")
+            COLLECTION_NAME = os.getenv("COLLECTION_NAME")
             
             # 1. Trying to delete the collection using the official method of LangChain.
             self.vector_store.delete_collection()

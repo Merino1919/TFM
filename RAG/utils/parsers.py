@@ -16,7 +16,7 @@ def select_loader(file_path: str):
         return elements
     
 def separate_content_types(chunk): 
-    """Analyze what types of content are in a chunk"""
+    """Analiza qué tipo de contenido hay en cada chunk"""
     content_data = {
         'text': chunk.text, 
         'tables': [], 

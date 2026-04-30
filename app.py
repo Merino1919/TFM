@@ -36,10 +36,6 @@ if "rag_engine" not in st.session_state:
     with st.spinner("Initializing RAG Engine..."):
         st.session_state.rag_engine = RAGEngine()
     
-# Con este bloque de código hacemos que se guarde el historial del chat   
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
 
 engine = st.session_state.rag_engine
 
