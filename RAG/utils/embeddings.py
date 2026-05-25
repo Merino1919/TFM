@@ -26,8 +26,8 @@ class EmbeddingManager():
             label = f"{best['common_name']} ({best['scientific_name']})"
             # El embedding se hace sobre el texto identificado por BirdNet
             vector = self.text_embedder.embed_query(label)
-            return label, vector, best['scientific_name']
-        return "Unknown Bird", None, "Unknown"
+            return label, vector, best['scientific_name'], best['confidence']
+        return "Unknown Bird", None, "Unknown", 0.0
     
     def get_image_embedding(self, image_path):
         """Embedding multimodal nativo de Google para imágenes."""

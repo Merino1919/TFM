@@ -85,7 +85,7 @@ def run_ingestion():
             aud_path = os.path.join(AUDIO_DIR, aud_name).replace("\\", "/")
             try:
                 # BirdNet nos da el nombre real para el embedding de texto
-                label, aud_vector, sci_name = manager.get_audio_embedding(aud_path)
+                label, aud_vector, sci_name, confidence = manager.get_audio_embedding(aud_path)
                 if aud_vector:
                     collection.add(
                         ids=[f"{ave_id}_aud"],
@@ -94,7 +94,8 @@ def run_ingestion():
                         metadatas=[{
                             "bird_common_name": label,
                             "scientific_name": sci_name,
-                            "type": "audio"
+                            "type": "audio", 
+                            "birdnet_confidence": float(confidence)
                         }]
                     )
                     print(f"✔ [{ave_id}] Audio indexado: {label}")

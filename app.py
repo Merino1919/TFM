@@ -131,9 +131,12 @@ elif page == "🎵 Búsqueda por audio":
             try:
                 # Pasamos el archivo por el EmbeddingManager: 
                 manager = EmbeddingManager()
-                label, embedding_aud, scientific_name = manager.get_audio_embedding(temp_path)
+                label, embedding_aud, scientific_name, confidence = manager.get_audio_embedding(temp_path)
                 
                 if embedding_aud:
+                    # Informamos al usuario del % del audio que acaba de subir
+                    st.success(f"🎵 BirdNet detectó: **{label}** con una confianza del **{confidence:.2%}**")
+                    
                     # Hacemos consulta a la BDD de ChromaDB
                     result_aud = query_database(embedding_aud)
                     
