@@ -56,6 +56,9 @@ streamlit run app.py
 2. **Búsqueda por Imagen/Audio:** Sube un archivo para encontrar especies similares en la base de datos.
 3. **Analizador de documentos:** Sube articulos académicos o papers en formato PDF sobre ornitología. El sistema los fragmentará, analizará sus tablas e imágenes con IA y te permitirá chatear con ellos con un contexto técnico profundo.
 
+## 📐 Arquitectura
+
+![Arquitectura del proyecto](Esquema_visual.png)
 
 ## 🛠️ Detalles Técnicos del agente experto en papers de ornitología
 
