@@ -44,29 +44,36 @@ engine = st.session_state.rag_engine
 if page == "Inicio":
     st.title("🐦 Ornito-RAG: Inteligencia Artificial Multimodal")
     st.markdown("""
-    ### Sobre este Proyecto (TFM)
+    ## **Sobre este Proyecto (TFM)**
     Esta aplicación es un sistema de **Generación Aumentada por Recuperación (RAG) Multimodal** especializado en la avifauna de la Península Ibérica.
     
-    **Tecnologías utilizadas:**
-    * **Google Gemini 1.5 Pro/Flash:** Cerebro del sistema para razonamiento y embeddings multimodales.
-    * **BirdNet:** Modelo de aprendizaje profundo especializado en la clasificación bioacústica.
+    ## **Tecnologías utilizadas:**
+    * **Google Gemini 2.5 Flash Lite:** Cerebro del sistema para razonamiento.
+    * **Gemini 2.0 Embedding Preview:** Modelo de embeddings multimodales. 
+    * **Orquestación:** Langchain y Google GenAI SDK. 
+    * **Parser PDF:** Unstructured (estrategia high resolution)
+    * **BirdNet:** Motor de identificación de audio especializado en la clasificación bioacústica.
     * **ChromaDB:** Base de datos vectorial para el almacenamiento de conocimiento experto.
     * **Streamlit:** Interfaz de usuario para la interacción en tiempo real.
     
     ---
-    ### ¿Cómo funciona?
-    El sistema permite la identificación cruzada. Al subir una imagen o un audio, la IA no solo identifica la especie, sino que recupera información contextual de la base de datos, permitiendo al usuario conocer el hábitat, comportamiento y cantos relacionados.
+    ## **¿Cómo funciona?**
+    El sistema permite la identificación cruzada. Al subir una imagen o un audio, la IA no solo identifica la especie, sino que recupera información contextual de la base de datos vectorial y devuelve información textual, imágenes y audios.
     """)
     
     st.markdown("""
     ---
-    ### ¿Qué puedes hacer?
-    - **Identificación Visual:** Sube una foto y deja que Gemini analice los rasgos taxonómicos.
-    - **Identificación Acústica:** Sube un canto y BirdNet filtrará el ruido para identificar la especie.
-    - **Base de Conocimiento:** Todos los resultados están conectados a una base de datos vectorial **ChromaDB**.
+    ## **Características**
+    - 📸 **Identificación Visual:** Búsqueda por similitud de imágenes utilizando embeddings multimodales nativos de Google para identificar rasgos taxonómicos.
+    - 🎵 **Análisis Bioacústico:** Integración con BirdNet para procesar cantos de aves, filtrar ruido ambiental e identificar especies mediante audio.
+    - 🔍 **Analizador Experto de Documentos:** Ingesta de PDFs científicos mediante *unstructured* con capacidad para extraer, resumir e indexar texto, tablas complejas e imágenes.
+    - 🧠 **Razonamiento Multimodal:** Generación de respuestas contextuadas utilizando Gemini 2.5 Flash Lite, capaz de "entender" tanto el texto de los papers como las imágenes y tablas recuperadas.
+    - 🧩 **Visualización de Datos:** Interfaz intuitiva en Streamlit con explorador de chunks y estadísticas de la base de datos vectorial en tiempo real.
+    ---
     """)
+     
     
-    st.image("https://images.unsplash.com/photo-1444464666168-49d633b86797?auto=format&fit=crop&q=80&w=1000", caption="Avifauna Ibérica")
+    st.image("C:/Users/34656/OneDrive/Escritorio/Research/TFM/Esquema_visual.png", caption="Arquitectura del proyecto")
     
     st.info("Utiliza el menú de la izquierda para comenzar con la identificación.")
     

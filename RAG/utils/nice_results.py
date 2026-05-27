@@ -86,15 +86,15 @@ def display_results(ordered_results):
                 st.error(f"Error al procesar la ruta: {e}")
                 
         # --- UI DE RESULTADOS ---
-        col1, col2 = st.columns([1, 1])
+        col1, col2 = st.columns([1, 1.5])
 
         with col1:
-            st.markdown(f"**Resultado {i+1}**")
-            st.markdown(f"**Especie:** `{especie}`")
-            st.markdown(f"**Similitud:** `{(1 - distancia):.2%}`") # Invertimos distancia para mostrar % de similitud
+            st.markdown(f"## **Resultado {i+1}**")
+            st.markdown(f"### **Especie:** `{especie}`")
+            st.markdown(f"### **Similitud:** `{(1 - distancia):.2%}`") # Invertimos distancia para mostrar % de similitud
             
             if confianza_db is not None:
-                st.markdown(f"**Confianza BirdNet (en BDD):** `{confianza_db:.2%}`")
+                st.markdown(f"### **Confianza BirdNet (en BDD):** `{confianza_db:.2%}`")
             
             with st.expander("🔗 Rutas de archivos"):
                 st.write("**Principal (BDD):**")
