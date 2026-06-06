@@ -58,7 +58,7 @@ streamlit run app.py
 
 ## 📐 Arquitectura
 
-![Arquitectura del proyecto](Esquema_visual.png)
+![Arquitectura del proyecto](Esquema.png)
 
 ## 🛠️ Detalles Técnicos del agente experto en papers de ornitología
 
