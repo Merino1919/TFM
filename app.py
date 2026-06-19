@@ -73,7 +73,7 @@ if page == "Inicio":
     """)
      
     
-    st.image("C:/Users/34656/OneDrive/Escritorio/Research/TFM/Esquema_visual.png", caption="Arquitectura del proyecto")
+    st.image("C:/Users/34656/OneDrive/Escritorio/Research/TFM/Esquema.png", caption="Arquitectura del proyecto")
     
     st.info("Utiliza el menú de la izquierda para comenzar con la identificación.")
     
